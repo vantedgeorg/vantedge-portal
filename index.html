@@ -344,16 +344,53 @@
   .locked-lib svg{width:26px;height:26px;color:var(--dim)}
   .fatal{max-width:520px;margin:18vh auto 0;padding:0 16px;text-align:center;color:var(--muted)}
   .fatal h1{margin-bottom:10px;color:var(--text)}
-  .nda{padding:8px 26px 26px;max-height:520px;overflow:auto;font-size:13.5px;line-height:1.65;color:var(--muted)}
-  .nda .lead{color:var(--text);margin:14px 0 4px}
-  .nda h3.nh{font-family:var(--body);font-size:11.5px;letter-spacing:.14em;font-weight:600;color:var(--cream);margin:24px 0 8px}
-  .nda h3.nh span{color:var(--dim);margin-right:4px}
-  .nda p{margin:0 0 8px;max-width:76ch}
-  .nda p b{color:var(--text);font-weight:600;margin-right:4px}
-  .nda .ni{padding-left:22px}
-  .nda .nd{padding-left:12px}
-  .nda .cover{text-align:center;padding:18px 0 6px;border-bottom:1px solid var(--line);margin-bottom:8px}
-  .nda .cover b{display:block;font-family:var(--display);font-size:18px;color:var(--text);font-weight:600;margin:6px 0 2px}
+  .ndoc{display:grid;grid-template-columns:212px minmax(0,1fr);border-top:1px solid var(--line);position:relative}
+  .ndoc-bar{position:absolute;top:-1px;left:0;right:0;height:2px;background:transparent;z-index:2;pointer-events:none}
+  .ndoc-bar i{display:block;height:100%;width:0;background:var(--cream);border-radius:0 2px 2px 0;transition:width .12s linear}
+  .ntoc{border-right:1px solid var(--line);padding:20px 10px 20px 12px;max-height:min(74vh,700px);overflow:auto;font-size:12.5px}
+  .ntoc .label{display:block;margin:0 0 10px 10px}
+  .ntoc button{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:24px minmax(0,1fr);gap:2px;padding:6px 10px;border-radius:6px;color:var(--dim);line-height:1.35;cursor:pointer}
+  .ntoc button:hover{background:var(--hover);color:var(--muted)}
+  .ntoc button:focus-visible{outline:2px solid var(--line-2)}
+  .ntoc button.on{background:var(--raise);color:var(--text)}
+  .ntoc button span{font-family:var(--mono);font-size:10.5px;color:var(--dim);padding-top:2px}
+  .ntoc button.on span{color:var(--cream)}
+  .ntoc .nsep{height:1px;background:var(--line);margin:8px 10px}
+  .ntoc .nread{margin:14px 10px 0;font-size:11.5px;color:var(--dim)}
+  .ntoc .nread b{color:var(--muted);font-weight:500}
+  .nda{position:relative;padding:0 clamp(18px,4.5vw,56px) 36px;max-height:min(74vh,700px);overflow:auto;font-size:14px;line-height:1.75;color:var(--muted);scroll-behavior:smooth}
+  .nda:focus-visible{outline:2px solid var(--line-2);outline-offset:-2px}
+  .nda .cover{text-align:center;padding:48px 0 34px;margin:0 auto;max-width:64ch;border-bottom:1px solid var(--line)}
+  .nda .cover .between{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  .nda .cover h2{font-family:var(--display);font-size:clamp(25px,3.2vw,32px);font-weight:600;color:var(--text);line-height:1.15;margin:16px 0 10px;letter-spacing:-.01em}
+  .nda .cover .sub{font-size:13.5px;color:var(--muted);margin:0}
+  .nda .cover .meta{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:22px}
+  .nda .cover .meta span{border:1px solid var(--line-2);border-radius:999px;padding:3px 11px;font-size:11.5px;color:var(--muted)}
+  .nda .dated{max-width:68ch;margin:28px auto 0;padding:14px 18px;border:1px solid var(--line);border-radius:8px;background:var(--raise);color:var(--text);font-size:13.5px}
+  .nsec{max-width:68ch;margin:0 auto;padding:34px 0 6px}
+  .nsec+.nsec,.nkick+.nsec{border-top:1px solid var(--line)}
+  .nkick{max-width:68ch;margin:36px auto 0;display:flex;align-items:center;gap:14px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .nkick::before,.nkick::after{content:"";flex:1;height:1px;background:var(--line-2)}
+  .nkick+.nsec{border-top:0;padding-top:22px}
+  .nsec h3{display:flex;align-items:baseline;gap:14px;font-family:var(--display);font-size:21px;font-weight:600;color:var(--text);margin:0 0 18px;letter-spacing:-.005em;line-height:1.25}
+  .nsec h3 .n{flex:0 0 auto;font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--cream);border:1px solid var(--line-2);border-radius:6px;padding:1px 7px;transform:translateY(-3px)}
+  .nda p{margin:0 0 14px}
+  .nda p.nc{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:start}
+  .nda p.nc>.no{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--cream);line-height:24.5px}
+  .nda p.nc .lead-in{color:var(--text);font-weight:600}
+  .nda p.ni{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:start;margin:-6px 0 12px 44px}
+  .nda .nsec.pre p.ni{margin:0 0 12px}
+  .nda p.ni>.no{color:var(--dim);font-weight:500}
+  .nda p.nd{margin:0 0 0 44px;padding:13px 18px;background:var(--raise);border:1px solid var(--line);border-top:0}
+  .nda p.nd>.no{display:block;color:var(--cream-2);font-weight:600;margin-bottom:2px}
+  .nda p:not(.nd)+p.nd{border-top:1px solid var(--line);border-radius:8px 8px 0 0;margin-top:-4px}
+  .nda p.nd:has(+ :not(.nd)),.nda p.nd:last-child{border-radius:0 0 8px 8px;margin-bottom:16px}
+  .nda p:not(.nd)+p.nd:has(+ :not(.nd)){border-radius:8px}
+  .nda .nsec.guard p{color:var(--dim)}
+  .nend{max-width:68ch;margin:30px auto 0;display:flex;align-items:center;gap:10px;padding:14px 18px;border:1px dashed var(--line-2);border-radius:8px;font-size:13px;color:var(--dim);transition:color .2s,border-color .2s}
+  .nend svg{width:16px;height:16px;flex:0 0 auto}
+  .ndoc.read .nend{color:var(--ok);border-color:rgba(148,194,163,.35);border-style:solid;background:var(--ok-bg)}
+  .ndoc.read .ndoc-bar i{background:var(--ok)}
   .sched{width:100%;border-collapse:collapse;font-size:13.5px;min-width:0}
   .sched th{width:42%;background:transparent;text-transform:none;letter-spacing:0;font-size:13px;color:var(--muted);font-weight:500;padding:11px 14px;border-bottom:1px solid var(--line)}
   .sched td{padding:11px 14px;border-bottom:1px solid var(--line)}
@@ -367,7 +404,7 @@
   .actrow:first-child{border-top:0}
   .actrow span{color:var(--dim)}
   .busy{opacity:.6;pointer-events:none}
-  @media (max-width:820px){.upload{grid-template-columns:1fr}.nda{padding:4px 18px 18px}}
+  @media (max-width:820px){.upload{grid-template-columns:1fr}.ndoc{grid-template-columns:1fr}.ntoc{display:none}.nda{padding:0 18px 22px;max-height:70vh}.nda p.ni,.nda p.nd{margin-left:0}.nda p.nc{grid-template-columns:38px minmax(0,1fr)}}
   @media print{body *{display:none !important}body::after{content:"Printing is turned off for Vantedge materials.";display:block !important;padding:40px;font:16px sans-serif}}
 </style>
 </head>
@@ -906,8 +943,8 @@
 <h3 class="nh"><span>7.</span> INTELLECTUAL PROPERTY</h3>
 <p class="nc"><b>7.1</b> All Intellectual Property Rights in the Vantedge Materials belong to and remain with Vantedge. Vantedge grants the Member a non-exclusive, non-transferable, revocable licence to use the Vantedge Materials solely for the purpose of performing the Member&#x27;s role. That licence terminates automatically on the Termination Date.</p>
 <p class="nc"><b>7.2</b> The Member hereby assigns to Vantedge absolutely, by way of present assignment of existing rights and of future rights, all Intellectual Property Rights in the Work Product throughout the world (including Work Product created before the Effective Date), in each case as and when they arise. This assignment is made in writing and signed by the Member for the purposes of section 27(3) of the Copyright Act 1987 (Malaysia) and any equivalent requirement elsewhere. To the extent that any such rights do not vest in Vantedge by virtue of this clause, the Member holds them on trust for Vantedge until they are assigned under clause 7.6. To the extent that any such rights cannot be assigned, the Member grants Vantedge an exclusive, perpetual, irrevocable, worldwide, royalty-free licence (with the right to sublicense) to use, reproduce, adapt and publish the Work Product.</p>
-<p class="nc"><b>7.3</b> To the extent permitted by applicable law, the Member irrevocably waives all moral rights in the Work Product and, where moral rights cannot be waived, unconditionally consents to</p>
-<p>Vantedge and its licensees editing, adapting, abridging and publishing the Work Product. Vantedge will nonetheless credit the Member as author or contributor on any Work Product it publishes, unless the Member asks not to be credited.</p>
+<p class="nc"><b>7.3</b> To the extent permitted by applicable law, the Member irrevocably waives all moral rights in the Work Product and, where moral rights cannot be waived, unconditionally consents to
+Vantedge and its licensees editing, adapting, abridging and publishing the Work Product. Vantedge will nonetheless credit the Member as author or contributor on any Work Product it publishes, unless the Member asks not to be credited.</p>
 <p class="nc"><b>7.4</b> The Member may reference and link to published Work Product in the Member&#x27;s CV, portfolio, professional networking profile and job applications, provided that Vantedge is credited. Unpublished Work Product shall not be disclosed to any third party.</p>
 <p class="nc"><b>7.5</b> The Member retains ownership of all Pre-existing Material. Where Pre-existing Material is incorporated into any Work Product, the Member grants Vantedge a non-exclusive, perpetual, irrevocable, royalty-free licence to use that Pre-existing Material as part of the Work Product.</p>
 <p class="nc"><b>7.6</b> The Member shall, at Vantedge&#x27;s request, sign all documents and do all things reasonably required to confirm or perfect the rights granted under this clause 7, including on any transfer under clause 15.</p>
@@ -940,8 +977,8 @@
 <p class="nc"><b>12.1</b> Vantedge will process the Member&#x27;s personal data in accordance with applicable data protection law, including the Personal Data Protection Act 2010 (Malaysia) and, where they apply, the EU General Data Protection Regulation (Regulation (EU) 2016/679) and the UK GDPR, for the purposes of administering its programme, crediting the Member&#x27;s work and maintaining contact with the Member, as further described in any privacy notice Vantedge provides to the Member.</p>
 <p class="nc"><b>12.2</b> The Member shall use any personal data accessed through Vantedge, including the contact details of members, partners and sponsors, solely for the purposes of the Member&#x27;s role and in accordance with applicable data protection law, and shall not retain any such data after the Termination Date.</p>
 <h3 class="nh"><span>13.</span> REMEDIES</h3>
-<p class="nc"><b>13.1</b> The Member acknowledges that damages alone may not be an adequate remedy for breach of clauses 5, 6, 7 or 8, and that Vantedge shall be entitled to seek injunctive relief, specific</p>
-<p>performance or other equitable relief for any actual or threatened breach, without prejudice to any other remedy.</p>
+<p class="nc"><b>13.1</b> The Member acknowledges that damages alone may not be an adequate remedy for breach of clauses 5, 6, 7 or 8, and that Vantedge shall be entitled to seek injunctive relief, specific
+performance or other equitable relief for any actual or threatened breach, without prejudice to any other remedy.</p>
 <p class="nc"><b>13.2</b> The Member shall, promptly on request, remove, amend or cease using any material which Vantedge reasonably considers to be in breach of this Agreement.</p>
 <p class="nc"><b>13.3</b> The Member acknowledges that the restrictions in clauses 6, 7 and 8 are reasonable and no more than is necessary to protect Vantedge&#x27;s confidential information, intellectual property and goodwill.</p>
 <h3 class="nh"><span>14.</span> VARIATION</h3>
@@ -952,8 +989,8 @@
 <p class="nc"><b>15.2</b> Xuenna Aw may at any time assign, novate or otherwise transfer all or any of her rights and obligations under this Agreement, including all Intellectual Property Rights assigned under clause 7, to any company or other entity (whether incorporated in Malaysia, the United Kingdom or elsewhere) which carries on the activities of Vantedge, by notice in writing to the Member. The Member irrevocably consents to any such transfer and agrees to be bound by this Agreement in favour of the transferee. From the date of that notice, the transferee shall be treated as &quot;Vantedge&quot; for all purposes of this Agreement, and Xuenna Aw shall be released from her obligations to the Member to the extent that they are assumed by the transferee.</p>
 <p class="nc"><b>15.3</b> The Member may not assign or transfer any of the Member&#x27;s rights or obligations under this Agreement.</p>
 <h3 class="nh"><span>16.</span> GENERAL</h3>
-<p class="nc"><b>16.1</b> Existing members. Where the Member participated in Vantedge before the Effective Date, this Agreement applies to all Confidential Information received and all Work Product created by the Member from the date the Member first participated in Vantedge. The assignment in clause</p>
-<p class="nc"><b>7.2</b> takes effect in respect of all such Work Product on the Effective Date.</p>
+<p class="nc"><b>16.1</b> Existing members. Where the Member participated in Vantedge before the Effective Date, this Agreement applies to all Confidential Information received and all Work Product created by the Member from the date the Member first participated in Vantedge. The assignment in clause
+7.2 takes effect in respect of all such Work Product on the Effective Date.</p>
 <p class="nc"><b>16.2</b> Survival. Clauses 1, 2.4, 2.5, 5.3, 6 to 10, 11.4, 11.5, 12 to 15 and this clause 16 survive termination of this Agreement.</p>
 <p class="nc"><b>16.3</b> Entire agreement. This Agreement constitutes the entire agreement between the parties relating to its subject matter. Vantedge&#x27;s handbooks and onboarding materials describe how its programme operates; they do not form part of this Agreement, and in the event of any conflict, this Agreement prevails.</p>
 <p class="nc"><b>16.4</b> Severance. If any provision (or part of a provision) of this Agreement is held to be invalid or unenforceable, it shall apply with such deletion as is necessary to make it valid and enforceable or, if that is not possible, shall be deemed deleted, and the remaining provisions shall not be affected. Each restriction in clause 8 is a separate and severable obligation.</p>
@@ -1380,13 +1417,14 @@
       const v = {overview, profile, library, nda}[S.tab] || overview;
       app.innerHTML = shell(v(S.me));
       if(S.tab==='nda' && !S.me.signedAt) setupPad();
+      if(S.tab==='nda') setupNda();
     }
     Object.keys(keep).forEach(id => { const el = document.getElementById(id); if(!el) return; if(el.type==='checkbox') el.checked = keep[id]; else if(!el.disabled) el.value = keep[id]; });
     if(focusId){ const el = document.getElementById(focusId); if(el && el !== document.activeElement){ el.focus(); try{ if(selStart!=null) el.setSelectionRange(selStart, selStart); }catch(e){} } }
     if(MS && MS.kind==='member') memberModal(MS.id);
   }
   function setNav(k, edit){
-    if(S.mode==='admin'){ S.adminTab = k; if(k==='activity') S.logs = null; } else { S.tab = k; S.editing = !!edit; }
+    if(S.mode==='admin'){ S.adminTab = k; if(k==='activity') S.logs = null; } else { if(S.tab !== k) ndaScrollTop = 0; S.tab = k; S.editing = !!edit; }
     closeModal(); render(); window.scrollTo({top:0, behavior:'smooth'});
     if(edit) setTimeout(()=>{ const f=document.querySelector('#pForm input:not([disabled])'); if(f) f.focus(); }, 40);
   }
