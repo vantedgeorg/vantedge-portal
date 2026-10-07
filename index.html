@@ -999,11 +999,67 @@ performance or other equitable relief for any actual or threatened breach, witho
 <p class="nc"><b>16.7</b> Electronic execution. This Agreement may be executed electronically and in counterparts. Each party agrees that an electronic signature which identifies the signatory and indicates their approval of this Agreement (including a signature applied through an e-signature platform) satisfies any requirement for a signature, in accordance with section 9 of the Electronic Commerce Act 2006 (Malaysia) and any equivalent law of the Member&#x27;s country of residence.</p>
 <p class="nc"><b>16.8</b> Governing law and jurisdiction. This Agreement and any dispute or claim (including any non-contractual dispute or claim) arising out of or in connection with it shall be governed by the laws of Malaysia. The courts of Malaysia shall have non-exclusive jurisdiction. Nothing in this clause prevents Vantedge from bringing proceedings (including for injunctive or other urgent relief) in the courts of the country in which the Member resides or any other court of competent jurisdiction.</p>
 <p class="nc"><b>16.9</b> Independent advice. The Member confirms that they have read and understood this Agreement and have had the opportunity to take independent advice before signing it.</p>`;
-  const ndaDoc = () => `<div class="nda" tabindex="0" aria-label="Vantedge NDA text">
-      <div class="cover"><span class="label">Xuenna Aw (operating under the name Vantedge) and the Member</span><b>Member and Non-Disclosure Agreement</b><span style="font-size:12.5px;color:var(--dim)">relating to confidentiality, intellectual property and conduct</span></div>
-      ${NDA_HTML}
-      <h3 class="nh">PARENT OR GUARDIAN UNDERTAKING</h3><p>Only for Members under 18. These Members can't sign in the portal and should contact the team for the guardian form.</p>
-    </div>`;
+  const NDA_SMALL = new Set(['and','or','of','the','to','in','on','for','a','an']);
+  const titleCase = t => t.toLowerCase().replace(/\b[a-z]+/g, (w,i) => i && NDA_SMALL.has(w) ? w : w[0].toUpperCase()+w.slice(1));
+  let NDA_BUILT = null;
+  function buildNda(){
+    if(NDA_BUILT) return NDA_BUILT;
+    const src = NDA_HTML + '<h3 class="nh">PARENT OR GUARDIAN UNDERTAKING</h3><p>Only for Members under 18. These Members can\'t sign in the portal and should contact the team for the guardian form.</p>';
+    const parts = src.split(/(?=<h3 class="nh">)/);
+    const toc = []; let body = '';
+    parts.forEach(part => {
+      const hm = part.match(/^<h3 class="nh">(?:<span>(\d+)\.<\/span>\s*)?([^<]+)<\/h3>/);
+      if(!hm){ body += part.replace(/^<p>([\s\S]*?)<\/p>/, '<p class="dated">$1</p>'); return; }
+      const num = hm[1] || '', title = titleCase(hm[2].trim());
+      let inner = part.slice(hm[0].length)
+        .replace(/<p class="(nc|ni|nd)"><b>([\s\S]*?)<\/b>\s*([\s\S]*?)<\/p>/g, (m,c,no,rest) => {
+          if(c==='nc' && num==='16') rest = rest.replace(/^([A-Z][a-z]+(?: [a-z]+){0,3})\.\s/, '<span class="lead-in">$1.</span> ');
+          return `<p class="${c}"><b class="no">${no}</b><span>${rest}</span></p>`;
+        });
+      if(!num && /^Agreed Terms$/i.test(title)){ body += '<div class="nkick">Agreed terms</div>'; return; }
+      const id = 'nda-' + (num || title.toLowerCase().replace(/[^a-z]+/g,'-'));
+      const guard = /guardian/i.test(title);
+      const label = guard ? 'Under-18 members' : title;
+      if(toc.length && (num==='1' || guard)) toc.push(null);
+      toc.push({id, num, label});
+      body += `<section class="nsec${num?'':' pre'}${guard?' guard':''}" id="${id}"><h3>${num?`<span class="n">${num}</span>`:''}<span>${title}</span></h3>${inner}</section>`;
+    });
+    return NDA_BUILT = {toc, body};
+  }
+  const ndaDoc = () => { const {toc, body} = buildNda(); return `<div class="ndoc">
+      <div class="ndoc-bar" aria-hidden="true"><i></i></div>
+      <nav class="ntoc" aria-label="Agreement contents"><span class="label">Contents</span>
+        ${toc.map(t => t ? `<button type="button" data-ndago="${t.id}"><span>${t.num ? String(t.num).padStart(2,'0') : '·'}</span>${esc(t.label)}</button>` : '<div class="nsep"></div>').join('')}
+        <div class="nread"><b class="ndpct">0%</b> read</div>
+      </nav>
+      <div class="nda" tabindex="0" aria-label="Vantedge NDA text">
+        <div class="cover"><span class="between">Xuenna Aw, operating as Vantedge &nbsp;·&nbsp; and the Member</span>
+          <h2>Member and Non-Disclosure Agreement</h2>
+          <p class="sub">Confidentiality, intellectual property and conduct</p>
+          <div class="meta"><span>Version ${NDA_VERSION}</span><span>16 clauses</span><span>Laws of Malaysia</span></div></div>
+        ${body}
+        <div class="nend">${ic('agreement')}<span class="nend-t">End of agreement. The Schedule and signing come next.</span></div>
+      </div>
+    </div>`; };
+  let ndaScrollTop = 0;
+  function setupNda(){
+    document.querySelectorAll('.ndoc').forEach(doc => {
+      const sc = doc.querySelector('.nda'), bar = doc.querySelector('.ndoc-bar i'), pct = doc.querySelector('.ndpct');
+      const btns = [...doc.querySelectorAll('[data-ndago]')], secs = [...sc.querySelectorAll('.nsec')];
+      const update = () => {
+        const max = sc.scrollHeight - sc.clientHeight, f = max > 0 ? Math.min(1, sc.scrollTop / max) : 1;
+        bar.style.width = (f*100).toFixed(1) + '%'; if(pct) pct.textContent = Math.round(f*100) + '%';
+        if(f > 0.985){ doc.classList.add('read'); const t = doc.querySelector('.nend-t'); if(t) t.textContent = "You've reached the end. The Schedule and signing come next."; }
+        let cur = secs[0]; secs.forEach(x => { if(x.offsetTop - 60 <= sc.scrollTop) cur = x; });
+        btns.forEach(b => b.classList.toggle('on', !!cur && b.dataset.ndago === cur.id));
+        ndaScrollTop = sc.scrollTop;
+      };
+      btns.forEach(b => b.addEventListener('click', () => { const t = sc.querySelector('#'+b.dataset.ndago); if(t) sc.scrollTo({top: t.offsetTop - 8}); }));
+      sc.addEventListener('scroll', update, {passive:true});
+      if(ndaScrollTop){ sc.style.scrollBehavior = 'auto'; sc.scrollTop = ndaScrollTop; sc.style.scrollBehavior = ''; }
+      update();
+    });
+  }
   const scheduleRows = m => [['Full name',m.name],['Email address',m.email],['Country of residence',m.country],['Role',m.role],['Division or team',[m.division,m.vertical].filter(Boolean).join(' · ')],['Date of first participation',fmtDate(m.firstParticipation)],['Aged 18 or over? (Yes / No)',adultLabel(m.adult)]];
   const scheduleTable = m => `<table class="sched">${scheduleRows(m).map(([k,v])=>`<tr><th>${k}</th>${String(v||'').trim()?`<td>${esc(v)}</td>`:'<td class="empty">Missing</td>'}</tr>`).join('')}</table>`;
   function nda(m){
