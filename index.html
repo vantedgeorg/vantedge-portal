@@ -426,6 +426,10 @@
   const NDA_VERSION = 'v1.0';
   const MAX_UPLOAD_MB = 50;
   const DEFAULT_TEMP_PASSWORD = "Vantedge2026!";
+  // Starting passwords (Vt-xxxxxxxxxx) are flagged must_change_password by the onboarding script
+  const isStartingPw = pw => pw === DEFAULT_TEMP_PASSWORD || /^Vt-[A-Za-z0-9]{10}$/.test(pw);
+  let pwJustChanged = false;
+  const mustChangePw = () => !pwJustChanged && !!(S.session && S.session.user && S.session.user.user_metadata && S.session.user.user_metadata.must_change_password);
   const LIB = {
     pdfjs: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
     pdfjsWorker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
@@ -684,7 +688,8 @@
     return authShell(authLeft, right);
   }
   function newPassView(){
-    return authShell(authLeft, `<h2>Choose a new password</h2><p>You're signed in as ${esc(myEmail())}. Set a password to finish.</p>
+    const first = mustChangePw();
+    return authShell(authLeft, `<h2>${first ? 'Choose your own password' : 'Choose a new password'}</h2><p>${first ? `Welcome to Vantedge. You're signed in as ${esc(myEmail())} with your starting password. Replace it with one only you know.` : `You're signed in as ${esc(myEmail())}. Set a password to finish.`}</p>
       <form id="newPassForm" novalidate><div class="form">
         <div class="field"><label for="n-pw">New password</label><input id="n-pw" type="password" autocomplete="new-password"><span class="hint">At least 8 characters.</span></div>
         <div class="field"><label for="n-pw2">Confirm new password</label><input id="n-pw2" type="password" autocomplete="new-password"></div>
@@ -1466,7 +1471,7 @@ performance or other equitable relief for any actual or threatened breach, witho
     const keep = {}; const onAuthScreen = !!$('.auth-card'); if(onAuthScreen || (ae && ae.id && /^(p-|c-|u-|typed|aq)/.test(ae.id))) { document.querySelectorAll('#app input,#app select,#app textarea').forEach(el=>{ if(!el.id || el.type==='file') return; keep[el.id] = el.type==='checkbox' ? el.checked : el.value; }); }
     if(!S.booted || S.loading){ app.innerHTML = '<div class="boot">Loading portal…</div>'; return; }
     if(!S.session){ app.innerHTML = authView(); requestAnimationFrame(drawGrain); }
-    else if(S.recovering){ app.innerHTML = newPassView(); requestAnimationFrame(drawGrain); }
+    else if(S.recovering || mustChangePw()){ app.innerHTML = newPassView(); requestAnimationFrame(drawGrain); }
     else if(S.mode==='admin' && S.isAdmin){ app.innerHTML = shell(S.adminTab==='library' ? adminLibrary() : S.adminTab==='activity' ? adminActivity() : adminMembers()); }
     else if(!S.me){ app.innerHTML = createView(); requestAnimationFrame(drawGrain); }
     else {
@@ -1600,10 +1605,11 @@ performance or other equitable relief for any actual or threatened breach, witho
       if(error){
         return authErr(friendly(error));
       }
-      if (pw === DEFAULT_TEMP_PASSWORD) {
-        S.recovering = true; // Triggers the "Choose a new password" screen (newPassView)
+      if (isStartingPw(pw) || (data && data.user && data.user.user_metadata && data.user.user_metadata.must_change_password)) {
+        pwJustChanged = false;
+        S.recovering = true; // Shows the "Choose your own password" screen (newPassView)
         render();
-        toast("Welcome to Vantedge! Please set your permanent password to continue.");
+        toast("Welcome to Vantedge! Choose your own password to continue.");
         return;
       }
     }
@@ -1623,23 +1629,25 @@ performance or other equitable relief for any actual or threatened breach, witho
       setSending(true);
       const v = await sb.auth.verifyOtp({ email:S.authEmail, token:code, type:'recovery' });
       if(v.error){ setSending(false); return authErr(friendly(v.error)); }
-      const u = await sb.auth.updateUser({ password: pw });
+      const u = await sb.auth.updateUser({ password: pw, data: { must_change_password: false } });
       setSending(false);
       if(u.error) return authErr(friendly(u.error));
-      toast('Password saved. You\'re logged in.');
+      pwJustChanged = true; toast('Password saved. You\'re logged in.');
     }
     if(f === 'newPassForm'){
       const pw = $('#n-pw').value, pw2 = $('#n-pw2').value;
       const pe = pwCheck(pw, pw2); if(pe) return authErr(pe);
-      const u = await sb.auth.updateUser({ password: pw });
+      if(isStartingPw(pw)) return authErr('Choose a password that is different from your starting password.');
+      const u = await sb.auth.updateUser({ password: pw, data: { must_change_password: false } });
       if(u.error) return authErr(friendly(u.error));
-      S.recovering = false; toast('Password saved'); afterAuth();
+      pwJustChanged = true; S.recovering = false; toast('Password saved'); afterAuth();
     }
     if(f === 'pwForm'){
       const pw = $('#w-pw').value, pw2 = $('#w-pw2').value;
       const pe = pwCheck(pw, pw2); if(pe){ $('#pwErr').textContent = pe; return; }
-      const u = await sb.auth.updateUser({ password: pw });
+      const u = await sb.auth.updateUser({ password: pw, data: { must_change_password: false } });
       if(u.error){ $('#pwErr').textContent = friendly(u.error); return; }
+      pwJustChanged = true;
       closeModal(); toast('Password changed');
     }
     if(f === 'createForm'){
