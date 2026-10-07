@@ -1331,17 +1331,18 @@ performance or other equitable relief for any actual or threatened breach, witho
     MS = {kind:'add'};
     if(created){
       modal(`<div class="modal sm" role="dialog" aria-modal="true" aria-labelledby="ad-h">
-        <div class="mh"><div><h2 id="ad-h">Member added</h2><p>They're already approved. Send them the portal link and tell them to create an account with this email.</p></div><button type="button" class="iconbtn" data-close aria-label="Close">${ic('x')}</button></div>
+        <div class="mh"><div><h2 id="ad-h">Member added</h2><p>${created.loginErr ? `They're approved, but their login couldn't be created (${esc(created.loginErr)}). Tell Kit, or add them through the tracker sheet.` : created.login && created.login.created === false ? `They're approved. They already had a login, so their existing password still works.` : `They're approved and their login is ready. Send them these details. They'll be asked to choose their own password the first time they log in.`}</p></div><button type="button" class="iconbtn" data-close aria-label="Close">${ic('x')}</button></div>
         <div class="mb"><div class="label">Email</div><div class="idbox"><b style="font-size:16px;font-family:var(--body)">${esc(created.email)}</b></div>
+          ${created.login && created.login.created ? `<div class="label" style="margin-top:18px">Starting password</div><div class="idbox"><b style="font-size:16px;font-family:var(--mono)" id="pwText">${esc(DEFAULT_TEMP_PASSWORD)}</b><button type="button" class="btn sm" data-act="copyPw">${ic('copy')} Copy</button></div>` : ''}
           <div class="label" style="margin-top:18px">Portal link</div><div class="idbox"><b style="font-size:14px;font-family:var(--body);overflow-wrap:anywhere" id="linkText">${esc(portalLink())}</b><button type="button" class="btn sm" data-act="copyLink">${ic('copy')} Copy</button></div></div>
         <div class="mf"><div class="r"><button type="button" class="btn ghost" data-act="add">Add another</button><button type="button" class="btn pri" data-close>Done</button></div></div></div>`);
       return;
     }
     modal(`<div class="modal sm" role="dialog" aria-modal="true" aria-labelledby="ad-h">
-      <div class="mh"><div><h2 id="ad-h">Add a member</h2><p>They're approved straight away and fill in the rest after creating their account.</p></div><button type="button" class="iconbtn" data-close aria-label="Close">${ic('x')}</button></div>
+      <div class="mh"><div><h2 id="ad-h">Add a member</h2><p>They're approved straight away and get a login with the starting password. They fill in the rest after logging in.</p></div><button type="button" class="iconbtn" data-close aria-label="Close">${ic('x')}</button></div>
       <form id="addForm" novalidate><div class="mb"><div class="form">
         <div class="field full"><label for="n-name">Full name</label><input id="n-name"></div>
-        <div class="field full"><label for="n-email">Email they'll sign up with</label><input id="n-email" type="email"></div>
+        <div class="field full"><label for="n-email">Email they'll log in with</label><input id="n-email" type="email"></div>
         <div class="field"><label for="n-vertical">Vertical</label><select id="n-vertical">${opts(Object.keys(VERTICALS),'Research')}</select></div>
         <div class="field"><label for="n-division">Division</label><select id="n-division">${opts(VERTICALS.Research,'M&A')}</select></div>
         <div class="field full"><label for="n-role">Role</label><select id="n-role">${opts(ROLES.Research,'Analyst')}</select></div>
@@ -1562,6 +1563,7 @@ performance or other equitable relief for any actual or threatened breach, witho
       case 'confirmedLogin': { setSending(true); const r = await sb.auth.signInWithPassword({email:S.authEmail, password:S.pendingPw}); setSending(false); if(r.error) authErr(/not confirmed/i.test(r.error.message||'') ? 'Your email isn\'t confirmed yet. Enter the code, or click the link in the email first.' : friendly(r.error)); else { S.pendingPw=''; } return; }
       case 'password': passwordModal(); return;
       case 'copyLink': copyText(portalLink(), 'linkText'); return;
+      case 'copyPw': copyText(DEFAULT_TEMP_PASSWORD, 'pwText'); return;
       case 'csv': downloadCsv(); return;
       case 'reloadLogs': S.logs = null; render(); return;
       case 'memberLogs': { const id = MS.id; await loadLogs(); memberModal(id); return; }
@@ -1701,7 +1703,13 @@ performance or other equitable relief for any actual or threatened breach, witho
       if(S.members.some(x=>String(x.email).toLowerCase()===email)){ err.textContent = 'A member with this email already exists.'; return; }
       $('#addBtn').disabled = true;
       const ok = await run(() => sb.from('members').insert({ name, email, vertical:$('#n-vertical').value, division:$('#n-division').value, role:$('#n-role').value, approved:true, approved_at:nowISO(), source:'admin' }).select());
-      if(ok){ await loadAll(); addModal({email}); } else { const b=$('#addBtn'); if(b) b.disabled=false; }
+      if(ok){
+        // Create their login with the starting password (admin-only database function)
+        let login = null, loginErr = '';
+        try{ const lg = await sb.rpc('admin_create_login', { p_email: email, p_name: name }); if(lg.error) throw lg.error; login = lg.data || {}; }
+        catch(x){ console.error(x); loginErr = friendly(x); }
+        await loadAll(); addModal({email, login, loginErr});
+      } else { const b=$('#addBtn'); if(b) b.disabled=false; }
     }
     if(f === 'editFileForm'){
       const id = MS.id, title = val('e-title');
