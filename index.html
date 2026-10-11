@@ -158,6 +158,11 @@
   .seg button{background:none;border:1px solid transparent;border-radius:7px;padding:7px 12px;font-size:12.5px;color:var(--muted)}
   .seg button:hover{color:var(--text)}
   .seg button[aria-pressed="true"]{background:var(--raise);border-color:var(--line-2);color:var(--text)}
+  .seg a.seg-link{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);border-radius:7px;padding:7px 12px;font-size:12.5px;color:var(--cream);text-decoration:none;margin-left:6px}
+  .seg a.seg-link:hover{background:var(--raise);color:var(--text)}
+  .seg a.seg-link svg,.nav a.nav-link svg.i{width:14px;height:14px}
+  .nav a.nav-link{display:flex;align-items:center;gap:12px;border-radius:8px;padding:10px 12px;color:var(--muted);font-size:14px;text-decoration:none}
+  .nav a.nav-link:hover{color:var(--text);background:var(--raise)}
   .lib{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
   .doc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 18px 16px;display:flex;flex-direction:column;gap:8px;min-height:176px;transition:border-color .15s}
   .doc:hover{border-color:var(--line-2)}
@@ -322,6 +327,16 @@
   .auth-links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;font-size:13px;color:var(--dim)}
   .code-input{letter-spacing:.4em;font-family:var(--mono);font-size:18px !important;text-align:center}
   .modal.lg{width:min(980px,100%)}
+  /* Full-screen file viewer */
+  .scrim.full{padding:0}
+  .modal.vfull{width:100vw;max-width:100vw;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;border-radius:0;border:0}
+  .modal.vfull .mh{padding:10px 18px}
+  .modal.vfull .mh h2{font-size:17px}
+  .modal.vfull .mb{flex:1;min-height:0;display:flex;padding:6px !important}
+  .modal.vfull .mf{padding:8px 18px}
+  .modal.vfull .viewer{flex:1;min-height:0;max-height:none}
+  .modal.vfull .viewer canvas{margin:auto}
+  .modal.vfull .viewer video,.modal.vfull .viewer img{max-height:100%}
   .viewer{position:relative;background:var(--bg);border-radius:8px;overflow:auto;min-height:55vh;max-height:72vh;display:flex;justify-content:center;align-items:flex-start;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
   .viewer canvas{display:block;max-width:none;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,.4)}
   .viewer video,.viewer img{max-width:100%;max-height:70vh;display:block;margin:auto}
@@ -480,11 +495,15 @@
   const VERTICALS = {Research:['M&A','Equity Research','DCM','ECM','Markets'], Growth:['Growth & Strategy','Partnerships & Outreach','Social Media']};
   const ROLES = {Research:['Analyst','Senior Analyst','Head of Division'], Growth:['Specialist','Deputy Head','Head']};
   const CHAPTERS = ['Global remote team','Bocconi','Bath'];
+  // Who can see a library item: their own division, everyone, or their whole vertical (matches the database lock)
   const EVERYONE = ['all','all members','all members (general)','everyone','general'];
   const isForEveryone = r => EVERYONE.includes(String(r.division||'').trim().toLowerCase());
   const isForVertical = (r, m) => { const d = String(r.division||'').trim().toLowerCase(), v = String(m.vertical||'').toLowerCase(); return !!v && [v, 'all '+v, 'all of '+v].includes(d); };
   const isForDivision = (r, m) => String(r.division||'').trim().toLowerCase() === String(m.division||'').trim().toLowerCase();
   const forMember = (r, m) => !!m && (isForEveryone(r) || isForDivision(r, m) || isForVertical(r, m));
+  const safeUrl = u => /^https:\/\//i.test(String(u||'')) ? String(u) : '';
+  const trackerFor = m => { if(!m) return ''; const d = String(m.division||'').trim().toLowerCase(); const l = (S.links||[]).find(x => x.kind==='tracker' && String(x.division||'').trim().toLowerCase()===d); return l ? safeUrl(l.url) : ''; };
+  const adminLink = key => { const l = (S.links||[]).find(x => x.kind===key); return l ? safeUrl(l.url) : ''; };
   const divLabel = d => d==='All' ? 'All members' : d==='All Research' ? 'All of Research' : d==='All Growth' ? 'All of Growth' : d;
   const divOptions = sel => `<option value="All" ${sel==='All'?'selected':''}>All members (general)</option><optgroup label="Research"><option value="All Research" ${sel==='All Research'?'selected':''}>All of Research</option>${VERTICALS.Research.map(d=>`<option value="${esc(d)}" ${sel===d?'selected':''}>${esc(d)}</option>`).join('')}</optgroup><optgroup label="Growth"><option value="All Growth" ${sel==='All Growth'?'selected':''}>All of Growth</option>${VERTICALS.Growth.map(d=>`<option value="${esc(d)}" ${sel===d?'selected':''}>${esc(d)}</option>`).join('')}</optgroup>`;
   const CONTACTS = [['Xuenna','Founder & Executive Director'],['Mariam','Co-Head of M&A · Bocconi Manager'],['Zhannel','VP of Global Marketing & Operations']];
@@ -592,10 +611,13 @@
   async function loadAll(background){
     if(!S.session) return;
     const uid = S.session.user.id;
-    const [mr, rr] = await Promise.all([
+    const [mr, rr, lr] = await Promise.all([
       sb.from('members').select('*'),
-      sb.from('resources').select('*').order('created_at', {ascending:false})
+      sb.from('resources').select('*').order('created_at', {ascending:false}),
+      Promise.resolve(sb.from('portal_links').select('*')).catch(() => ({ data: [] }))
     ]);
+    // Task tracker / admin links come from the database, so each person only receives the links they're allowed to see
+    S.links = (lr && !lr.error && lr.data) || [];
     if(mr.error){ console.error(mr.error); toast(friendly(mr.error), true); }
     S.members = (mr.data || []).map(fromRow);
     S.me = S.members.find(m => m.userId === uid) || null;
@@ -726,17 +748,12 @@
   const setSending = v => { S.sending = v; const b = document.querySelector('.auth-card button[type=submit]'); if(b){ b.disabled = v; } };
 
   /* ================= CREATE PROFILE ================= */
+  // Logged in but not a member: only people the team added (tracker email or Admin page) get access.
   function createView(){
-    return authShell(`<div><span class="label" style="color:var(--cream)">Welcome</span><h1>Let's set up your profile.</h1><p>Tell us your role. The founding team will approve you, then your NDA and library unlock.</p></div>`, `
-        <h2>Create your profile</h2><p>Signed in as ${esc(myEmail())}.</p>
-        <form id="createForm" novalidate><div class="form two">
-          <div class="field full"><label for="c-name">Full name <span class="req">*</span></label><input id="c-name" autocomplete="name"></div>
-          <div class="field"><label for="c-vertical">Vertical <span class="req">*</span></label><select id="c-vertical">${opts(Object.keys(VERTICALS),'Research')}</select></div>
-          <div class="field"><label for="c-division">Division <span class="req">*</span></label><select id="c-division">${opts(VERTICALS.Research,'M&A')}</select></div>
-          <div class="field full"><label for="c-role">Role <span class="req">*</span></label><select id="c-role">${opts(ROLES.Research,'Analyst')}</select></div>
-        </div>
-        <p class="err" id="createErr" style="margin:14px 0 0"></p>
-        <div style="margin-top:18px"><button type="submit" class="btn pri">Create profile</button></div></form>
+    return authShell(`<div><span class="label" style="color:var(--cream)">Member portal</span><h1>Access is by invitation.</h1><p>Accounts are created by the Vantedge team when you join. There's no self sign-up.</p></div>`, `
+        <h2>No access for this account</h2>
+        <p>You're signed in as ${esc(myEmail())}, but this email isn't on the Vantedge member list.</p>
+        <p style="margin-top:10px">If you've joined the team, log in with the email and starting password from your onboarding email. If something looks wrong, email <a href="mailto:contact@vantedgeorg.com" style="color:var(--cream)">contact@vantedgeorg.com</a>.</p>
         <div class="auth-admin"><span>Wrong account?</span><button type="button" class="btn sm ghost" data-act="signout">${ic('out')} Sign out</button></div>
         ${S.isAdmin?`<div class="auth-admin" style="margin-top:12px;border-top:0;padding-top:0"><span>You manage this portal.</span><button type="button" class="btn sm" data-mode="admin">${ic('key')} Open admin</button></div>`:''}`);
   }
@@ -759,6 +776,7 @@
             const locked = !admin && k==='library' && !hasAccess(m);
             return `<button type="button" data-nav="${k}" ${cur===k?'aria-current="page"':''}>${ic(icn)}${l}${locked?`<span class="end">${ic('lock')}</span>`:''}</button>`;
           }).join('')}
+          ${admin && adminLink('applications') ? `<a class="nav-link" href="${esc(adminLink('applications'))}" target="_blank" rel="noopener noreferrer">${ic('members')}Application tracker <span class="end">${ic('arrow')}</span></a>` : ''}
         </nav>
         <div class="side-foot">
           <div class="conn live"><span class="dot"></span>Signed in · ${esc(myEmail())}</div>
@@ -880,17 +898,18 @@
       const why = m.revoked ? 'Your access has been removed.' : !m.approved ? 'Your library unlocks once the team approves you and you sign the Vantedge NDA.' : !complete(m) ? 'Finish your details, then sign the Vantedge NDA to unlock it.' : 'Sign the Vantedge NDA to unlock it.';
       return `<div class="page">${head}${notice(m)}<div class="locked-lib">${ic('lock')}<b style="color:var(--text)">Library locked</b><span>${why}</span></div></div>`;
     }
-  const fs = [['mine','All my files'],['div', m.division || 'My division']];
-  if(m.vertical) fs.push(['vertical', 'All of ' + m.vertical]);
-  fs.push(['general','General'],['templates','Templates']);
-  if(!fs.some(([k])=>k===S.filter)) S.filter = 'mine';
-  let list = S.resources.filter(r=>forMember(r, m));
-  if(S.filter==='div') list = list.filter(r=>isForDivision(r, m));
-  else if(S.filter==='vertical') list = list.filter(r=>isForVertical(r, m));
-  else if(S.filter==='general') list = list.filter(isForEveryone);
-  else if(S.filter==='templates') list = list.filter(r=>r.allow_download);
+    // Members only ever see their own division, their vertical and everyone's files
+    const fs = [['mine','All my files'],['div', m.division || 'My division']];
+    if(m.vertical) fs.push(['vertical', 'All of ' + m.vertical]);
+    fs.push(['general','General'],['templates','Templates']);
+    if(!fs.some(([k])=>k===S.filter)) S.filter = 'mine';
+    let list = S.resources.filter(r=>forMember(r, m));
+    if(S.filter==='div') list = list.filter(r=>isForDivision(r, m));
+    else if(S.filter==='vertical') list = list.filter(r=>isForVertical(r, m));
+    else if(S.filter==='general') list = list.filter(isForEveryone);
+    else if(S.filter==='templates') list = list.filter(r=>r.allow_download);
     return `<div class="page">${head}
-      <div class="toolbar"><div class="seg" role="group" aria-label="Filter">${fs.map(([k,l])=>`<button type="button" data-filter="${esc(k)}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}</div>
+      <div class="toolbar"><div class="seg" role="group" aria-label="Filter">${fs.map(([k,l])=>`<button type="button" data-filter="${esc(k)}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}${trackerFor(m)?`<a class="seg-link" href="${esc(trackerFor(m))}" target="_blank" rel="noopener noreferrer">Task Tracker ${ic('arrow')}</a>`:''}</div>
         <span class="label num">${list.length} item${list.length===1?'':'s'}</span></div>
       ${list.length?`<div class="lib">${list.map(docCard).join('')}</div>`:'<div class="empty">Nothing here yet. The team adds materials over time.</div>'}
     </div>`;
@@ -1408,10 +1427,11 @@ performance or other equitable relief for any actual or threatened breach, witho
     const k = opts.kind || fileKind(r);
     const title = opts.title || r.title;
     const canDl = !!opts.allowDownload;
-    modal(`<div class="modal lg" role="dialog" aria-modal="true" aria-labelledby="vw-h">
+    modal(`<div class="modal lg vfull" role="dialog" aria-modal="true" aria-labelledby="vw-h">
       <div class="mh"><div><h2 id="vw-h">${esc(title)}</h2><p>${canDl?'Downloadable':'View only'} · watermarked${k==='PDF'?' · use ← → to turn pages':''}</p></div><button type="button" class="iconbtn" data-close aria-label="Close">${ic('x')}</button></div>
       <div class="mb" style="background:var(--bg);padding:14px"><div class="viewer" id="viewerBox" oncontextmenu="return false"><span class="label" style="margin:auto;padding:40px">Opening…</span></div></div>
       <div class="mf"><div class="vbar" id="vbar"></div><div class="r">${canDl?`<button type="button" class="btn sm" data-dlnow="1">${ic('download')} Download</button>`:''}</div></div></div>`);
+    { const sc = $('#scrim'); if(sc) sc.classList.add('full'); }
     document.addEventListener('keydown', viewerKeys, true);
     const st = viewerState = {closed:false, r, opts, kind:k};
     const expires = k==='VIDEO' ? 4*3600 : 120;
@@ -1447,8 +1467,9 @@ performance or other equitable relief for any actual or threatened breach, witho
     const page = await st.pdf.getPage(st.page);
     if(st.closed) return;
     const base = page.getViewport({scale:1});
-    const fitW = Math.max(280, box.clientWidth - 24);
-    const cssScale = (fitW / base.width) * st.zoom;
+    // Fit the whole page on screen (whichever of width/height runs out first); +/- zoom from there
+    const fitW = Math.max(200, box.clientWidth - 16), fitH = Math.max(200, box.clientHeight - 16);
+    const cssScale = Math.min(fitW / base.width, fitH / base.height) * st.zoom;
     const dpr = Math.min(2.5, window.devicePixelRatio || 1);
     const vp = page.getViewport({scale: cssScale * dpr});
     const c = document.createElement('canvas'); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
@@ -1462,6 +1483,8 @@ performance or other equitable relief for any actual or threatened breach, witho
     document.querySelectorAll('[data-vpage="-1"]').forEach(b=>b.disabled = st.page<=1);
     document.querySelectorAll('[data-vpage="1"]').forEach(b=>b.disabled = st.page>=st.pdf.numPages);
   }
+  let vResizeT = null;
+  window.addEventListener('resize', () => { if(!viewerState || !viewerState.pdf) return; clearTimeout(vResizeT); vResizeT = setTimeout(renderPdfPage, 150); });
   function goPage(d){ const st = viewerState; if(!st || !st.pdf) return; const p = Math.max(1, Math.min(st.pdf.numPages, st.page + d)); if(p !== st.page){ st.page = p; renderPdfPage(); } }
   async function downloadResource(r){
     const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(r.file_path, 60, { download: r.file_name || true });
