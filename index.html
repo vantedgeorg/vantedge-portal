@@ -164,6 +164,19 @@
   .nav a.nav-link{display:flex;align-items:center;gap:12px;border-radius:8px;padding:10px 12px;color:var(--muted);font-size:14px;text-decoration:none}
   .nav a.nav-link:hover{color:var(--text);background:var(--raise)}
   .lib{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:18px}
+  .fold{display:flex;align-items:center;gap:12px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;color:var(--text);cursor:pointer;font:inherit;transition:border-color .15s,background .15s}
+  .fold:hover{border-color:var(--line-2);background:var(--raise)}
+  .fold svg{width:24px;height:24px;flex:none;color:var(--cream)}
+  .fold span{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .fold b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fold small{font-size:12px;color:var(--dim)}
+  .crumbs{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:13.5px;color:var(--dim)}
+  .crumbs button{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:var(--muted);font:inherit;cursor:pointer;padding:4px 0}
+  .crumbs button:hover{color:var(--text)}
+  .crumbs svg{width:15px;height:15px}
+  .crumbs b{color:var(--text);font-weight:600}
+  .nav + .nav{margin-top:14px}
   .doc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 18px 16px;display:flex;flex-direction:column;gap:8px;min-height:176px;transition:border-color .15s}
   .doc:hover{border-color:var(--line-2)}
   .doc .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -355,6 +368,10 @@
   .frow:first-child{border-top:0}
   .frow b{display:block;font-size:14px}
   .frow span{font-size:12.5px;color:var(--dim)}
+  .frow .chip{display:inline-flex;width:auto;vertical-align:middle}
+  .frow span svg.i{width:13px;height:13px;vertical-align:-2px;margin-right:2px}
+  #afolder{background:var(--raise);border:1px solid var(--line-2);border-radius:8px;padding:9px 12px;color:var(--text);font:inherit;font-size:13px;max-width:220px}
+  .panel-h:has(#afolder){display:flex;justify-content:space-between;align-items:center;gap:12px}
   .locked-lib{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:48px 24px;border:1px dashed var(--line-2);border-radius:var(--r);color:var(--muted)}
   .locked-lib svg{width:26px;height:26px;color:var(--dim)}
   .fatal{max-width:520px;margin:18vh auto 0;padding:0 16px;text-align:center;color:var(--muted)}
@@ -487,7 +504,9 @@
     mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/>',
     upload:'<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
     download:'<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>',
-    edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>'
+    edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+    folder:'<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/>',
+    sheet:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 9v12"/>'
   };
   const ic = (n, cls='') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
 
@@ -503,6 +522,12 @@
   const forMember = (r, m) => !!m && (isForEveryone(r) || isForDivision(r, m) || isForVertical(r, m));
   const safeUrl = u => /^https:\/\//i.test(String(u||'')) ? String(u) : '';
   const trackerFor = m => { if(!m) return ''; const d = String(m.division||'').trim().toLowerCase(); const l = (S.links||[]).find(x => x.kind==='tracker' && String(x.division||'').trim().toLowerCase()===d); return l ? safeUrl(l.url) : ''; };
+  const cleanFolder = v => { const f = String(v||'').replace(/\s+/g,' ').trim().slice(0,60); return f || null; };
+  const folderOf = r => String(r.folder||'').trim();
+  const folderNames = list => [...new Set(list.map(folderOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true, sensitivity:'base'}));
+  const TRACKER_ORDER = ['m&a','equity research','markets','dcm','ecm'];
+  const allTrackers = () => (S.links||[]).filter(x => x.kind==='tracker' && safeUrl(x.url))
+    .sort((a,b) => { const ia = TRACKER_ORDER.indexOf(String(a.division||'').trim().toLowerCase()), ib = TRACKER_ORDER.indexOf(String(b.division||'').trim().toLowerCase()); return (ia<0?99:ia) - (ib<0?99:ib); });
   const adminLink = key => { const l = (S.links||[]).find(x => x.kind===key); return l ? safeUrl(l.url) : ''; };
   const divLabel = d => d==='All' ? 'All members' : d==='All Research' ? 'All of Research' : d==='All Growth' ? 'All of Growth' : d;
   const divOptions = sel => `<option value="All" ${sel==='All'?'selected':''}>All members (general)</option><optgroup label="Research"><option value="All Research" ${sel==='All Research'?'selected':''}>All of Research</option>${VERTICALS.Research.map(d=>`<option value="${esc(d)}" ${sel===d?'selected':''}>${esc(d)}</option>`).join('')}</optgroup><optgroup label="Growth"><option value="All Growth" ${sel==='All Growth'?'selected':''}>All of Growth</option>${VERTICALS.Growth.map(d=>`<option value="${esc(d)}" ${sel===d?'selected':''}>${esc(d)}</option>`).join('')}</optgroup>`;
@@ -517,7 +542,7 @@
     mode:'member', tab:'overview', adminTab:'members',
     filter:'mine', q:'', statusF:'all', editing:false,
     auth:'login', authEmail:'', pendingPw:'', cooldown:0, sending:false, uploading:false, signing:false,
-    actQ:'', actType:'all', pendingRender:false, confirmFile:null
+    actQ:'', actType:'all', pendingRender:false, confirmFile:null, folder:null, adminFolder:'all'
   };
   const fromRow = r => ({
     id:r.id, userId:r.user_id, code:r.member_code, email:r.email||'', name:r.name||'', preferred:r.preferred||'',
@@ -776,8 +801,11 @@
             const locked = !admin && k==='library' && !hasAccess(m);
             return `<button type="button" data-nav="${k}" ${cur===k?'aria-current="page"':''}>${ic(icn)}${l}${locked?`<span class="end">${ic('lock')}</span>`:''}</button>`;
           }).join('')}
-          ${admin && adminLink('applications') ? `<a class="nav-link" href="${esc(adminLink('applications'))}" target="_blank" rel="noopener noreferrer">${ic('members')}Application tracker <span class="end">${ic('arrow')}</span></a>` : ''}
         </nav>
+        ${admin && (adminLink('applications') || allTrackers().length) ? `<nav class="nav" aria-label="Trackers"><span class="label">Trackers</span>
+          ${adminLink('applications') ? `<a class="nav-link" href="${esc(adminLink('applications'))}" target="_blank" rel="noopener noreferrer">${ic('members')}Application tracker <span class="end">${ic('arrow')}</span></a>` : ''}
+          ${allTrackers().map(t => `<a class="nav-link" href="${esc(safeUrl(t.url))}" target="_blank" rel="noopener noreferrer">${ic('sheet')}${esc(t.division)} <span class="end">${ic('arrow')}</span></a>`).join('')}
+        </nav>` : ''}
         <div class="side-foot">
           <div class="conn live"><span class="dot"></span>Signed in · ${esc(myEmail())}</div>
           <div class="whoami"><span class="av">${admin?ic('key'):esc(initials(m?m.name:myEmail()))}</span><div class="t"><b>${admin?'Founding team':esc(m?(m.preferred||m.name):myEmail())}</b><span class="num">${admin?`${S.members.length} member${S.members.length===1?'':'s'}`:esc(m?m.code:'')}</span></div>
@@ -908,10 +936,23 @@
     else if(S.filter==='vertical') list = list.filter(r=>isForVertical(r, m));
     else if(S.filter==='general') list = list.filter(isForEveryone);
     else if(S.filter==='templates') list = list.filter(r=>r.allow_download);
+    // Folders: show folder cards first, then loose files; open a folder to see what's inside
+    const folders = folderNames(list);
+    if(S.folder && !folders.includes(S.folder)) S.folder = null;
+    let body;
+    if(S.folder){
+      const inside = list.filter(r => folderOf(r) === S.folder);
+      body = `<div class="crumbs"><button type="button" data-folder="">${ic('library')} All folders</button><span>/</span><b>${esc(S.folder)}</b></div>
+        ${inside.length?`<div class="lib">${inside.map(docCard).join('')}</div>`:'<div class="empty">This folder is empty.</div>'}`;
+    } else {
+      const loose = list.filter(r => !folderOf(r));
+      body = (folders.length ? `<div class="folders">${folders.map(f => { const n = list.filter(r=>folderOf(r)===f).length; return `<button type="button" class="fold" data-folder="${esc(f)}">${ic('folder')}<span><b>${esc(f)}</b><small class="num">${n} file${n===1?'':'s'}</small></span></button>`; }).join('')}</div>` : '')
+        + (loose.length ? `<div class="lib">${loose.map(docCard).join('')}</div>` : folders.length ? '' : '<div class="empty">Nothing here yet. The team adds materials over time.</div>');
+    }
     return `<div class="page">${head}
       <div class="toolbar"><div class="seg" role="group" aria-label="Filter">${fs.map(([k,l])=>`<button type="button" data-filter="${esc(k)}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}${trackerFor(m)?`<a class="seg-link" href="${esc(trackerFor(m))}" target="_blank" rel="noopener noreferrer">Task Tracker ${ic('arrow')}</a>`:''}</div>
         <span class="label num">${list.length} item${list.length===1?'':'s'}</span></div>
-      ${list.length?`<div class="lib">${list.map(docCard).join('')}</div>`:'<div class="empty">Nothing here yet. The team adds materials over time.</div>'}
+      ${body}
     </div>`;
   }
 
@@ -1244,6 +1285,10 @@ performance or other equitable relief for any actual or threatened breach, witho
   function adminLibrary(){
     const active = S.members.filter(hasAccess);
     const accessCount = d => active.filter(m => forMember({division:d}, m)).length;
+    const allFolders = folderNames(S.resources);
+    if(S.adminFolder!=='all' && S.adminFolder!=='' && !allFolders.includes(S.adminFolder)) S.adminFolder = 'all';
+    const shown = S.resources.filter(r => S.adminFolder==='all' || folderOf(r)===S.adminFolder)
+      .slice().sort((a,b) => (folderOf(a)||'\uffff').localeCompare(folderOf(b)||'\uffff', undefined, {numeric:true, sensitivity:'base'}));
     return `<div class="page">
       <header class="ph"><div><span class="label">Admin · Library</span><h1>Library files</h1>
         <p>Upload handbooks, templates and recordings here instead of the shared Drive. Only active members can open them, and only for as long as they're active.</p></div></header>
@@ -1252,18 +1297,21 @@ performance or other equitable relief for any actual or threatened breach, witho
         <div class="panel-b"><div class="upload">
           <div class="field"><label for="u-title">Title</label><input id="u-title" placeholder="e.g. M&A Analyst Handbook"></div>
           <div class="field"><label for="u-div">Who it's for</label><select id="u-div">${divOptions('All')}</select></div>
-          <div class="field full" style="grid-column:1/-1"><label for="u-desc">Short description</label><input id="u-desc" placeholder="One line on what's inside"></div>
+          <div class="field"><label for="u-folder">Folder <span style="color:var(--dim);font-weight:400">(optional)</span></label><input id="u-folder" list="folderList" placeholder="Pick one or type a new folder name" maxlength="60"></div>
+          <div class="field"><label for="u-desc">Short description</label><input id="u-desc" placeholder="One line on what's inside"></div>
           <div class="drop"><input id="u-file" type="file" accept=".pdf,.mp4,.mov,.webm,.png,.jpg,.jpeg,.pptx,.ppt,.potx,.docx,.doc,.xlsx,.xls,.csv"><span class="hint" style="color:var(--dim);font-size:12px">Tip: upload handbooks as PDF so they open in the locked viewer.</span></div>
           <label class="switch-row"><input type="checkbox" id="u-dl"><div>Allow download<span>Members can save the original file. Turned on automatically for PowerPoint. Every download is logged.</span></div></label>
         </div>
         <div class="form-foot"><span class="err" id="upErr"></span><button type="submit" class="btn pri" style="margin-left:auto" ${S.uploading?'disabled':''}>${ic('upload')} ${S.uploading?'Uploading…':'Upload'}</button></div></div>
       </form>
-      <section class="panel"><div class="panel-h"><div><h2>In the library</h2><p>${S.resources.length} file${S.resources.length===1?'':'s'}</p></div></div>
-        ${S.resources.length ? `<div class="files">${S.resources.map(r=>`<div class="frow"><div><b>${esc(r.title)} ${r.allow_download?'<span class="chip dl" style="margin-left:6px">Downloadable</span>':''}</b><span>${esc(divLabel(r.division))} · ${fileKind(r)}${r.file_size?' · '+esc(fmtSize(r.file_size)):''} · ${accessCount(r.division)} can open · added ${esc(fmtDate(r.created_at))}</span></div>
+      <datalist id="folderList">${allFolders.map(f=>`<option value="${esc(f)}">`).join('')}</datalist>
+      <section class="panel"><div class="panel-h"><div><h2>In the library</h2><p>${S.resources.length} file${S.resources.length===1?'':'s'}${allFolders.length?` in ${allFolders.length} folder${allFolders.length===1?'':'s'}`:''}</p></div>
+        ${allFolders.length ? `<select id="afolder" aria-label="Folder"><option value="all" ${S.adminFolder==='all'?'selected':''}>All folders</option><option value="" ${S.adminFolder===''?'selected':''}>Not in a folder</option>${allFolders.map(f=>`<option value="${esc(f)}" ${S.adminFolder===f?'selected':''}>${esc(f)}</option>`).join('')}</select>` : ''}</div>
+        ${shown.length ? `<div class="files">${shown.map(r=>`<div class="frow"><div><b>${esc(r.title)} ${r.allow_download?'<span class="chip dl" style="margin-left:6px">Downloadable</span>':''}</b><span>${folderOf(r)?`${ic('folder')} ${esc(folderOf(r))} · `:''}${esc(divLabel(r.division))} · ${fileKind(r)}${r.file_size?' · '+esc(fmtSize(r.file_size)):''} · ${accessCount(r.division)} can open · added ${esc(fmtDate(r.created_at))}</span></div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${S.confirmFile===r.id
             ? `<button type="button" class="btn sm ghost" data-act="cancelFile">Cancel</button><button type="button" class="btn sm danger" data-delfile-yes="${esc(r.id)}">Yes, delete</button>`
             : `<button type="button" class="btn sm" data-open="${esc(r.id)}">Preview</button><button type="button" class="btn sm ghost" data-editfile="${esc(r.id)}">${ic('edit')} Edit</button><button type="button" class="btn sm danger" data-delfile="${esc(r.id)}">Delete</button>`}</div></div>`).join('')}</div>`
-          : '<div class="panel-b"><div class="empty">No files yet. Upload your first handbook above.</div></div>'}
+          : `<div class="panel-b"><div class="empty">${S.resources.length?'No files in this folder.':'No files yet. Upload your first handbook above.'}</div></div>`}
       </section>
     </div>`;
   }
@@ -1384,6 +1432,7 @@ performance or other equitable relief for any actual or threatened breach, witho
         <div class="field"><label for="e-title">Title</label><input id="e-title" value="${esc(r.title)}"></div>
         <div class="field"><label for="e-desc">Short description</label><input id="e-desc" value="${esc(r.description||'')}"></div>
         <div class="field"><label for="e-div">Who it's for</label><select id="e-div">${divOptions(r.division)}</select></div>
+        <div class="field"><label for="e-folder">Folder <span style="color:var(--dim);font-weight:400">(leave blank for none)</span></label><input id="e-folder" list="efolderList" value="${esc(folderOf(r))}" maxlength="60"><datalist id="efolderList">${folderNames(S.resources).map(f=>`<option value="${esc(f)}">`).join('')}</datalist></div>
         <label class="switch-row"><input type="checkbox" id="e-dl" ${r.allow_download?'checked':''}><div>Allow download<span>Members can save the original file. Every download is logged.</span></div></label>
       </div><p class="err" id="efErr" style="margin:14px 0 0"></p></div>
       <div class="mf"><div class="r"><button type="button" class="btn ghost" data-close>Cancel</button><button type="submit" class="btn pri">Save changes</button></div></div></form></div>`);
@@ -1530,6 +1579,7 @@ performance or other equitable relief for any actual or threatened breach, witho
       if(f) $('#u-dl').checked = isPpt(f.name);
     }
     if(id === 'atype'){ S.actType = e.target.value; render(); }
+    if(id === 'afolder'){ S.adminFolder = e.target.value; render(); }
   });
   async function copyText(text, fallbackId){
     try{ await navigator.clipboard.writeText(text); toast('Copied'); }
@@ -1550,7 +1600,8 @@ performance or other equitable relief for any actual or threatened breach, witho
     if(d.auth){ const em = (document.querySelector('.auth-card input[type=email]')||{}).value; if(em) S.authEmail = em.trim(); S.auth = d.auth; render(); setTimeout(()=>{ const f = document.querySelector('.auth-card input'); if(f) f.focus(); }, 30); return; }
     if(d.mode){ S.mode = d.mode; if(d.mode==='admin') S.adminTab='members'; closeModal(); render(); window.scrollTo({top:0}); return; }
     if(d.nav){ setNav(d.nav, d.edit); return; }
-    if(d.filter){ S.filter = d.filter; render(); return; }
+    if(d.filter){ S.filter = d.filter; S.folder = null; render(); return; }
+    if('folder' in d){ S.folder = d.folder || null; render(); window.scrollTo({top:0}); return; }
     if(d.status){ S.statusF = d.status; render(); return; }
     if('close' in d){ closeModal(); return; }
     if(d.vpage){ goPage(+d.vpage); return; }
@@ -1588,7 +1639,7 @@ performance or other equitable relief for any actual or threatened breach, witho
     if(t.id === 'resendReset'){ if(S.cooldown>0) return; const r = await sb.auth.resetPasswordForEmail(S.authEmail, {redirectTo:portalLink()}); if(r.error) authErr(friendly(r.error)); else { toast('New code sent'); startCooldown(); } return; }
 
     switch(d.act){
-      case 'signout': unsubscribe(); S.session = null; await sb.auth.signOut(); S.recovering=false; S.auth='login'; S.pendingPw=''; S.tab='overview'; S.adminTab='members'; S.mode='member'; S.q=''; S.statusF='all'; S.filter='mine'; S.editing=false; S.logs=null; closeModal(); afterAuth(); toast('Signed out'); return;
+      case 'signout': unsubscribe(); S.session = null; await sb.auth.signOut(); S.recovering=false; S.auth='login'; S.pendingPw=''; S.tab='overview'; S.adminTab='members'; S.mode='member'; S.q=''; S.statusF='all'; S.filter='mine'; S.folder=null; S.adminFolder='all'; S.editing=false; S.logs=null; closeModal(); afterAuth(); toast('Signed out'); return;
       case 'confirmedLogin': { setSending(true); const r = await sb.auth.signInWithPassword({email:S.authEmail, password:S.pendingPw}); setSending(false); if(r.error) authErr(/not confirmed/i.test(r.error.message||'') ? 'Your email isn\'t confirmed yet. Enter the code, or click the link in the email first.' : friendly(r.error)); else { S.pendingPw=''; } return; }
       case 'password': passwordModal(); return;
       case 'copyLink': copyText(portalLink(), 'linkText'); return;
@@ -1743,7 +1794,7 @@ performance or other equitable relief for any actual or threatened breach, witho
     if(f === 'editFileForm'){
       const id = MS.id, title = val('e-title');
       if(!title){ $('#efErr').textContent = 'Give the file a title.'; return; }
-      const r = await sb.from('resources').update({ title, description:val('e-desc'), division:$('#e-div').value, allow_download:$('#e-dl').checked }).eq('id', id).select();
+      const r = await sb.from('resources').update({ title, description:val('e-desc'), division:$('#e-div').value, folder:cleanFolder(val('e-folder')), allow_download:$('#e-dl').checked }).eq('id', id).select();
       if(r.error || !r.data || !r.data.length){ $('#efErr').textContent = friendly(r.error || 'permission'); return; }
       closeModal(); toast('File updated'); await loadAll();
     }
@@ -1752,15 +1803,17 @@ performance or other equitable relief for any actual or threatened breach, witho
       if(!file){ err.textContent = 'Choose a file to upload.'; return; }
       if(!title){ err.textContent = 'Give the file a title.'; return; }
       if(file.size > MAX_UPLOAD_MB*1024*1024){ err.textContent = `That file is ${fmtSize(file.size)}. The limit is ${MAX_UPLOAD_MB} MB. For long videos, compress them or split them into parts.`; return; }
-      const division = $('#u-div').value, desc = val('u-desc'), allow = $('#u-dl').checked;
+      const division = $('#u-div').value, desc = val('u-desc'), allow = $('#u-dl').checked, folder = cleanFolder(val('u-folder'));
       const safe = file.name.replace(/[^A-Za-z0-9._-]+/g,'-').replace(/-+/g,'-');
-      const folder = division.replace(/[^A-Za-z0-9]+/g,'-').toLowerCase();
-      const path = `${folder}/${Date.now()}-${safe}`;
+      const prefix = division.replace(/[^A-Za-z0-9]+/g,'-').toLowerCase();
+      const path = `${prefix}/${Date.now()}-${safe}`;
       S.uploading = true; render();
       await run(async () => {
         const up = await sb.storage.from(BUCKET).upload(path, file, { contentType:file.type || 'application/octet-stream', upsert:false });
         if(up.error) return up;
-        const ins = await sb.from('resources').insert({ title, description:desc, division, file_path:path, file_name:file.name, file_type:file.type||'', file_size:file.size, allow_download:allow }).select();
+        const row = { title, description:desc, division, file_path:path, file_name:file.name, file_type:file.type||'', file_size:file.size, allow_download:allow };
+        if(folder) row.folder = folder;
+        const ins = await sb.from('resources').insert(row).select();
         if(ins.error){ await sb.storage.from(BUCKET).remove([path]); }
         return ins;
       }, allow ? 'Uploaded. Active members can view and download it.' : 'Uploaded. Active members can view it.');
